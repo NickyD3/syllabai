@@ -1,0 +1,1687 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SyllabAI — Syllabus & Calendar Hub</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'system-ui', 'sans-serif'],
+          },
+          colors: {
+            brand: {
+              50: '#eff6ff',
+              100: '#dbeafe',
+              500: '#3b82f6',
+              600: '#2563eb',
+              700: '#1d4ed8',
+            },
+          },
+        },
+      },
+    };
+  </script>
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+</head>
+<body class="bg-slate-50 text-slate-900 font-sans antialiased">
+  <!-- Global Loading Overlay -->
+  <div id="global-loading-overlay" class="hidden fixed inset-0 z-[70] bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4">
+    <div class="w-full max-w-sm rounded-2xl bg-white border border-slate-200 shadow-2xl p-6 text-center space-y-3">
+      <div class="w-10 h-10 mx-auto rounded-full border-4 border-brand-100 border-t-brand-600 animate-spin"></div>
+      <div id="loading-overlay-title" class="text-base font-bold text-slate-900">Working...</div>
+      <p id="loading-overlay-subtitle" class="text-xs text-slate-500">Please wait while we finish processing.</p>
+    </div>
+  </div>
+
+  <!-- Toast Container -->
+  <div id="toast-container" class="fixed bottom-4 right-4 z-[80] flex flex-col gap-2 max-w-sm"></div>
+
+  <!-- Dedicated Sign-In Screen -->
+  <section id="login-view" class="min-h-screen flex items-center justify-center px-4 py-10 bg-gradient-to-br from-slate-900 via-slate-800 to-brand-900">
+    <div class="w-full max-w-md rounded-2xl bg-white border border-slate-200 shadow-2xl p-7 space-y-6">
+      <div class="space-y-1.5 text-center">
+        <div class="w-12 h-12 mx-auto rounded-2xl bg-brand-600 text-white font-bold flex items-center justify-center text-lg shadow-sm">
+          SA
+        </div>
+        <h1 class="text-2xl font-bold text-slate-900 tracking-tight">Sign in to SyllabAI</h1>
+        <p class="text-sm text-slate-500">Connect your Google account to sync classes and syllabus deadlines into toggleable Google Calendars.</p>
+      </div>
+
+      <button
+        id="google-signin-btn"
+        type="button"
+        class="w-full flex items-center justify-center gap-3 rounded-xl border border-slate-300 bg-white hover:bg-slate-50 active:bg-slate-100 text-slate-800 font-semibold text-sm py-3 px-4 shadow-2xs transition cursor-pointer"
+      >
+        <svg class="w-5 h-5 shrink-0" viewBox="0 0 24 24" aria-hidden="true">
+          <path fill="#4285F4" d="M23.49 12.27c0-.79-.07-1.54-.19-2.27H12v4.51h6.47c-.29 1.5-.11 2.77-.99 3.63v2.84h3.2c1.87-1.72 2.81-4.26 2.81-7.29z" />
+          <path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.2-2.84c-1.08.72-2.45 1.16-4.73 1.16-3.64 0-6.72-2.46-7.82-5.77H1.09v2.93C3.06 21.3 7.2 24 12 24z" />
+          <path fill="#FBBC05" d="M4.18 14.64c-.28-.84-.44-1.74-.44-2.64s.16-1.8.44-2.64V6.43H1.09A11.98 11.98 0 0 0 0 12c0 1.94.46 3.77 1.09 5.57l3.09-2.93z" />
+          <path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.2 0 3.06 2.7 1.09 6.43l3.09 2.93c1.1-3.31 4.18-5.77 7.82-5.77z" />
+        </svg>
+        <span>Sign in with Google</span>
+      </button>
+
+      <div class="text-center text-xs text-slate-500">
+        Before signing in, view our
+        <button
+          id="open-tos-btn"
+          type="button"
+          class="font-semibold text-brand-600 hover:text-brand-700 underline cursor-pointer"
+        >
+          Terms of Service
+        </button>
+        and
+        <button
+          id="open-privacy-btn"
+          type="button"
+          class="font-semibold text-brand-600 hover:text-brand-700 underline cursor-pointer"
+        >
+          Privacy Policy
+        </button>.
+      </div>
+
+      <div id="oauth-config-notice" class="hidden rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">
+        Set <code class="font-mono font-semibold">DEFAULT_GOOGLE_CLIENT_ID</code> inside <code class="font-mono font-semibold">index.html</code> (and add your site URL to Authorized JavaScript origins in Google Cloud Console) for live Google sign-in. You can still test the workspace via demo sign-in below.
+      </div>
+
+      <div class="relative flex items-center">
+        <div class="flex-grow border-t border-slate-200"></div>
+        <span class="px-3 text-xs font-medium text-slate-400 uppercase tracking-wider">Or preview workspace</span>
+        <div class="flex-grow border-t border-slate-200"></div>
+      </div>
+
+      <button
+        id="demo-signin-btn"
+        type="button"
+        class="w-full rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs py-2.5 px-4 transition cursor-pointer"
+      >
+        Continue with Demo Account
+      </button>
+    </div>
+  </section>
+
+  <!-- Legal Document Modal (Terms of Service / Privacy Policy) -->
+  <div id="legal-modal" class="hidden fixed inset-0 z-[65] bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4">
+    <div class="w-full max-w-2xl rounded-2xl bg-white border border-slate-200 shadow-2xl p-6 space-y-4 max-h-[85vh] flex flex-col">
+      <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+        <div class="flex items-center gap-2">
+          <button
+            id="legal-tab-tos"
+            type="button"
+            class="rounded-lg px-3 py-1.5 text-xs font-bold bg-brand-600 text-white cursor-pointer"
+          >
+            Terms of Service
+          </button>
+          <button
+            id="legal-tab-privacy"
+            type="button"
+            class="rounded-lg px-3 py-1.5 text-xs font-bold bg-slate-100 text-slate-700 hover:bg-slate-200 cursor-pointer"
+          >
+            Privacy Policy
+          </button>
+        </div>
+        <button id="close-legal-modal-btn" type="button" class="text-slate-400 hover:text-slate-700 text-lg font-bold px-2 cursor-pointer">
+          ✕
+        </button>
+      </div>
+
+      <div id="legal-modal-content" class="overflow-y-auto pr-1 text-xs sm:text-sm text-slate-700 space-y-3 leading-relaxed"></div>
+
+      <div class="flex justify-end pt-2 border-t border-slate-100">
+        <button
+          id="done-legal-modal-btn"
+          type="button"
+          class="rounded-xl bg-brand-600 hover:bg-brand-700 text-white text-xs font-semibold px-4 py-2 cursor-pointer"
+        >
+          Close
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main Workspace View -->
+  <div id="app-view" class="hidden min-h-screen bg-slate-50 text-slate-900 flex flex-col">
+    <header class="bg-white border-b border-slate-200 sticky top-0 z-30">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 py-3.5 flex flex-wrap items-center justify-between gap-3">
+        <div class="flex items-center gap-3">
+          <div class="w-9 h-9 rounded-xl bg-brand-600 text-white font-bold flex items-center justify-center text-sm shadow-2xs">
+            SA
+          </div>
+          <div>
+            <div class="font-bold text-slate-900 text-base leading-tight">SyllabAI</div>
+            <div id="user-display" class="text-xs text-slate-500"></div>
+          </div>
+        </div>
+
+        <div class="flex flex-wrap items-center gap-2">
+          <button
+            id="open-course-modal-btn"
+            type="button"
+            class="rounded-xl bg-brand-600 hover:bg-brand-700 text-white text-xs sm:text-sm font-semibold px-3.5 py-2 shadow-2xs transition cursor-pointer"
+          >
+            + Add Class
+          </button>
+          <button
+            id="open-deadline-modal-btn"
+            type="button"
+            class="rounded-xl border border-slate-300 bg-white hover:bg-slate-50 text-slate-800 text-xs sm:text-sm font-semibold px-3.5 py-2 transition cursor-pointer"
+          >
+            + Add Item
+          </button>
+          <button
+            id="push-all-gcal-btn"
+            type="button"
+            class="rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs sm:text-sm font-semibold px-3.5 py-2 shadow-2xs transition cursor-pointer"
+          >
+            Push Everything to Google Calendar
+          </button>
+          <button
+            id="export-ics-btn"
+            type="button"
+            class="rounded-xl border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 text-xs sm:text-sm font-semibold px-3 py-2 transition cursor-pointer"
+          >
+            Export .ICS
+          </button>
+          <button
+            id="sign-out-btn"
+            type="button"
+            class="rounded-xl text-xs font-semibold text-slate-500 hover:text-rose-600 px-2.5 py-2 transition cursor-pointer"
+          >
+            Sign Out
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <main class="max-w-7xl w-full mx-auto px-4 sm:px-6 py-6 grid grid-cols-1 lg:grid-cols-12 gap-6 flex-1">
+      <aside class="lg:col-span-4 space-y-6">
+        <div class="rounded-2xl bg-white border border-slate-200 p-4 sm:p-5 shadow-2xs space-y-3">
+          <div class="flex items-center justify-between">
+            <h2 class="text-sm font-bold text-slate-900">Your Classes</h2>
+          </div>
+          <div id="courses-list" class="space-y-2.5"></div>
+        </div>
+
+        <div class="rounded-2xl bg-white border border-slate-200 p-4 sm:p-5 shadow-2xs space-y-3">
+          <div class="flex items-center justify-between">
+            <h2 class="text-sm font-bold text-slate-900">Upcoming Assignments & Events</h2>
+            <span id="deadlines-count-label" class="text-xs font-semibold text-slate-500">0 items</span>
+          </div>
+          <div id="deadlines-list" class="space-y-2 max-h-[420px] overflow-y-auto pr-1"></div>
+        </div>
+      </aside>
+
+      <section class="lg:col-span-8 rounded-2xl bg-white border border-slate-200 p-4 sm:p-5 shadow-2xs flex flex-col gap-4">
+        <div class="flex flex-wrap items-center justify-between gap-3">
+          <div class="flex items-center gap-2">
+            <button
+              id="prev-period-btn"
+              type="button"
+              class="rounded-lg border border-slate-300 bg-white hover:bg-slate-50 px-2.5 py-1.5 text-xs font-bold text-slate-700 cursor-pointer"
+            >
+              Prev
+            </button>
+            <button
+              id="today-btn"
+              type="button"
+              class="rounded-lg border border-slate-300 bg-white hover:bg-slate-50 px-2.5 py-1.5 text-xs font-semibold text-slate-700 cursor-pointer"
+            >
+              Today
+            </button>
+            <button
+              id="next-period-btn"
+              type="button"
+              class="rounded-lg border border-slate-300 bg-white hover:bg-slate-50 px-2.5 py-1.5 text-xs font-bold text-slate-700 cursor-pointer"
+            >
+              Next
+            </button>
+            <h2 id="calendar-title" class="text-base sm:text-lg font-bold text-slate-900 ml-2"></h2>
+          </div>
+
+          <div class="inline-flex rounded-xl bg-slate-100 p-1">
+            <button
+              id="view-week-btn"
+              type="button"
+              class="rounded-lg px-3 py-1 text-xs font-semibold bg-white text-slate-900 shadow-2xs cursor-pointer"
+            >
+              Week
+            </button>
+            <button
+              id="view-month-btn"
+              type="button"
+              class="rounded-lg px-3 py-1 text-xs font-semibold text-slate-600 hover:text-slate-900 cursor-pointer"
+            >
+              Month
+            </button>
+          </div>
+        </div>
+
+        <div id="calendar-container" class="overflow-x-auto flex-1"></div>
+      </section>
+    </main>
+  </div>
+
+  <!-- Add Class & Syllabus Scanner Modal -->
+  <div id="course-modal" class="hidden fixed inset-0 z-50 bg-slate-950/50 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
+    <div class="w-full max-w-xl rounded-2xl bg-white border border-slate-200 shadow-2xl p-6 space-y-5 my-8">
+      <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+        <div class="flex items-center gap-2.5">
+          <h2 class="text-lg font-bold text-slate-900">Add Class & Scan Syllabus</h2>
+          <span id="syllabus-scan-badge" class="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800">
+            Syllabus Not Scanned Yet
+          </span>
+        </div>
+        <button id="close-course-modal-btn" type="button" class="text-slate-400 hover:text-slate-700 text-lg font-bold px-2 cursor-pointer">
+          ✕
+        </button>
+      </div>
+
+      <form id="course-form" class="space-y-4">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label for="course-code" class="block text-xs font-semibold text-slate-700 mb-1">Course Code</label>
+            <input
+              id="course-code"
+              type="text"
+              required
+              placeholder="CHEM 110"
+              class="w-full rounded-xl border border-slate-300 px-3.5 py-2 text-sm text-slate-900 focus:border-brand-600 focus:outline-none"
+            />
+          </div>
+          <div>
+            <label for="course-name" class="block text-xs font-semibold text-slate-700 mb-1">Course Name</label>
+            <input
+              id="course-name"
+              type="text"
+              required
+              placeholder="General Chemistry I"
+              class="w-full rounded-xl border border-slate-300 px-3.5 py-2 text-sm text-slate-900 focus:border-brand-600 focus:outline-none"
+            />
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 mb-1.5">Meeting Days</label>
+          <div id="course-days-boxes" class="flex flex-wrap gap-2">
+            <label class="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-700 cursor-pointer hover:bg-slate-50">
+              <input type="checkbox" name="meeting-day" value="Mon" class="rounded text-brand-600" />
+              <span>Mon</span>
+            </label>
+            <label class="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-700 cursor-pointer hover:bg-slate-50">
+              <input type="checkbox" name="meeting-day" value="Tue" class="rounded text-brand-600" />
+              <span>Tue</span>
+            </label>
+            <label class="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-700 cursor-pointer hover:bg-slate-50">
+              <input type="checkbox" name="meeting-day" value="Wed" class="rounded text-brand-600" />
+              <span>Wed</span>
+            </label>
+            <label class="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-700 cursor-pointer hover:bg-slate-50">
+              <input type="checkbox" name="meeting-day" value="Thu" class="rounded text-brand-600" />
+              <span>Thu</span>
+            </label>
+            <label class="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-700 cursor-pointer hover:bg-slate-50">
+              <input type="checkbox" name="meeting-day" value="Fri" class="rounded text-brand-600" />
+              <span>Fri</span>
+            </label>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div>
+            <label for="course-start-time" class="block text-xs font-semibold text-slate-700 mb-1">Start Time</label>
+            <input id="course-start-time" type="time" value="10:00" class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm text-slate-900" />
+          </div>
+          <div>
+            <label for="course-end-time" class="block text-xs font-semibold text-slate-700 mb-1">End Time</label>
+            <input id="course-end-time" type="time" value="10:50" class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm text-slate-900" />
+          </div>
+          <div>
+            <label for="course-color" class="block text-xs font-semibold text-slate-700 mb-1">Calendar Color</label>
+            <input id="course-color" type="color" value="#2563eb" class="w-full h-[38px] rounded-xl border border-slate-300 p-1 cursor-pointer" />
+          </div>
+        </div>
+
+        <div>
+          <label for="semester-start-input" class="block text-xs font-semibold text-slate-700 mb-1">Semester Start Date (Week 1 Reference)</label>
+          <input id="semester-start-input" type="date" value="2026-08-24" class="w-full rounded-xl border border-slate-300 px-3.5 py-2 text-sm text-slate-900" />
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 mb-1.5">Syllabus File</label>
+          <div
+            id="syllabus-dropzone"
+            class="rounded-2xl border-2 border-dashed border-slate-300 bg-slate-50/70 hover:bg-slate-50 p-5 text-center transition space-y-2"
+          >
+            <p class="text-sm font-semibold text-slate-800">Drag & drop a syllabus file here, or choose a file</p>
+            <p class="text-xs text-slate-500">Supports .pdf, .txt, .md, .csv, or .html syllabus files</p>
+            <input
+              id="syllabus-file-input"
+              type="file"
+              accept=".pdf,.txt,.md,.csv,.html,.htm"
+              class="block mx-auto text-xs text-slate-600 file:mr-3 file:rounded-lg file:border-0 file:bg-brand-50 file:px-3 file:py-1.5 file:font-semibold file:text-brand-700 hover:file:bg-brand-100 cursor-pointer"
+            />
+          </div>
+        </div>
+
+        <div id="scanned-preview-box" class="hidden rounded-xl border border-slate-200 bg-slate-50 p-3 space-y-1.5">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-bold text-slate-700">Scanned Plain Text</span>
+            <span id="scanned-summary-label" class="text-xs font-semibold text-emerald-700"></span>
+          </div>
+          <pre id="scanned-plain-text" class="text-[11px] text-slate-700 whitespace-pre-wrap max-h-36 overflow-y-auto font-mono bg-white p-2.5 rounded-lg border border-slate-200"></pre>
+        </div>
+
+        <div class="flex items-center justify-end gap-2.5 pt-2 border-t border-slate-100">
+          <button
+            id="cancel-course-btn"
+            type="button"
+            class="rounded-xl border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 text-sm font-semibold px-4 py-2 cursor-pointer"
+          >
+            Cancel
+          </button>
+          <button
+            id="save-course-btn"
+            type="submit"
+            disabled
+            class="rounded-xl bg-brand-600 hover:bg-brand-700 disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm font-semibold px-4 py-2 shadow-2xs transition cursor-pointer"
+          >
+            Save Class & Create Assignments
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Add Manual Deadline / Event Modal -->
+  <div id="deadline-modal" class="hidden fixed inset-0 z-50 bg-slate-950/50 backdrop-blur-xs flex items-center justify-center p-4">
+    <div class="w-full max-w-md rounded-2xl bg-white border border-slate-200 shadow-2xl p-6 space-y-4">
+      <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+        <h2 class="text-lg font-bold text-slate-900">Add Assignment or Event</h2>
+        <button id="close-deadline-modal-btn" type="button" class="text-slate-400 hover:text-slate-700 text-lg font-bold px-2 cursor-pointer">
+          ✕
+        </button>
+      </div>
+
+      <form id="deadline-form" class="space-y-4">
+        <div>
+          <label for="deadline-course-select" class="block text-xs font-semibold text-slate-700 mb-1">Class</label>
+          <select id="deadline-course-select" class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm text-slate-900"></select>
+        </div>
+        <div>
+          <label for="deadline-title" class="block text-xs font-semibold text-slate-700 mb-1">Title</label>
+          <input id="deadline-title" type="text" required placeholder="Week 1 Homework" class="w-full rounded-xl border border-slate-300 px-3.5 py-2 text-sm text-slate-900" />
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div>
+            <label for="deadline-type" class="block text-xs font-semibold text-slate-700 mb-1">Category</label>
+            <select id="deadline-type" class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm text-slate-900">
+              <option value="Assignment">Assignment</option>
+              <option value="Quiz">Quiz</option>
+              <option value="Exam">Exam</option>
+              <option value="Test">Test</option>
+              <option value="Lab">Lab</option>
+              <option value="Project">Project</option>
+              <option value="Other">Other</option>
+            </select>
+          </div>
+          <div>
+            <label for="deadline-date" class="block text-xs font-semibold text-slate-700 mb-1">Due Date</label>
+            <input id="deadline-date" type="date" required class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm text-slate-900" />
+          </div>
+          <div>
+            <label for="deadline-time" class="block text-xs font-semibold text-slate-700 mb-1">Due Time</label>
+            <input id="deadline-time" type="time" value="23:59" class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm text-slate-900" />
+          </div>
+        </div>
+
+        <div class="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+          <button id="cancel-deadline-btn" type="button" class="rounded-xl border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 text-sm font-semibold px-4 py-2 cursor-pointer">
+            Cancel
+          </button>
+          <button type="submit" class="rounded-xl bg-brand-600 hover:bg-brand-700 text-white text-sm font-semibold px-4 py-2 cursor-pointer">
+            Save Item
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Event Detail & Editor Modal -->
+  <div id="detail-modal" class="hidden fixed inset-0 z-50 bg-slate-950/50 backdrop-blur-xs flex items-center justify-center p-4">
+    <div class="w-full max-w-md rounded-2xl bg-white border border-slate-200 shadow-2xl p-6 space-y-4">
+      <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+        <div class="flex items-center gap-2">
+          <h2 class="text-lg font-bold text-slate-900">Item Details</h2>
+          <span id="detail-confidence-badge" class="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800">
+            High Confidence
+          </span>
+        </div>
+        <button id="close-detail-modal-btn" type="button" class="text-slate-400 hover:text-slate-700 text-lg font-bold px-2 cursor-pointer">
+          ✕
+        </button>
+      </div>
+
+      <form id="detail-edit-form" class="space-y-3.5">
+        <input id="detail-item-id" type="hidden" />
+        <div>
+          <label for="detail-title-input" class="block text-xs font-semibold text-slate-700 mb-1">Title</label>
+          <input id="detail-title-input" type="text" required class="w-full rounded-xl border border-slate-300 px-3.5 py-2 text-sm text-slate-900" />
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div>
+            <label for="detail-type-select" class="block text-xs font-semibold text-slate-700 mb-1">Type</label>
+            <select id="detail-type-select" class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm text-slate-900">
+              <option value="Assignment">Assignment</option>
+              <option value="Quiz">Quiz</option>
+              <option value="Exam">Exam</option>
+              <option value="Test">Test</option>
+              <option value="Lab">Lab</option>
+              <option value="Project">Project</option>
+              <option value="Other">Other</option>
+            </select>
+          </div>
+          <div>
+            <label for="detail-date-input" class="block text-xs font-semibold text-slate-700 mb-1">Date</label>
+            <input id="detail-date-input" type="date" required class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm text-slate-900" />
+          </div>
+          <div>
+            <label for="detail-time-input" class="block text-xs font-semibold text-slate-700 mb-1">Time</label>
+            <input id="detail-time-input" type="time" class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm text-slate-900" />
+          </div>
+        </div>
+
+        <div class="rounded-xl bg-slate-50 border border-slate-200 p-3 space-y-1">
+          <div class="text-[11px] font-bold uppercase tracking-wider text-slate-500">Source Proof</div>
+          <p id="detail-source-proof" class="text-xs text-slate-700 font-mono break-words"></p>
+        </div>
+
+        <div class="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-100">
+          <div class="flex items-center gap-2">
+            <button
+              id="delete-detail-btn"
+              type="button"
+              class="rounded-xl border border-rose-200 bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-semibold px-3 py-2 cursor-pointer"
+            >
+              Delete
+            </button>
+            <button
+              id="push-single-gcal-btn"
+              type="button"
+              class="rounded-xl border border-emerald-200 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 text-xs font-semibold px-3 py-2 cursor-pointer"
+            >
+              Push to Google Calendar
+            </button>
+          </div>
+          <button
+            type="submit"
+            class="rounded-xl bg-brand-600 hover:bg-brand-700 text-white text-xs font-semibold px-4 py-2 cursor-pointer"
+          >
+            Save Changes
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    // Replace with your Google Cloud OAuth 2.0 Web Client ID before deploying.
+    // Users will never see or type this ID—they only click "Sign in with Google".
+    const DEFAULT_GOOGLE_CLIENT_ID = '';
+
+    const TERMS_OF_SERVICE_HTML = `
+      <h3 class="text-base font-bold text-slate-900">Terms of Service — SyllabAI</h3>
+      <p class="text-xs text-slate-500">Last Updated: November 22, 2026</p>
+      <p>By accessing or using <strong>SyllabAI</strong> ("the Service"), you agree to be bound by these Terms of Service. If you do not agree with any part of these terms, please do not use the Service.</p>
+      <h4 class="font-bold text-slate-900">1. Purpose of the Service</h4>
+      <p>SyllabAI helps students organize classes, extract course dates and deadlines from uploaded syllabus files (such as PDF, text, or HTML files), view schedules in a calendar interface, export <code>.ics</code> files, and optionally sync events into Google Calendar.</p>
+      <h4 class="font-bold text-slate-900">2. User Accounts & Google Authorization</h4>
+      <p>You may preview the workspace in demo mode or sign in with a Google account to enable Google Calendar syncing. When you connect your Google account, you authorize the Service to access only the Google scopes you approve.</p>
+      <h4 class="font-bold text-slate-900">3. Syllabus Parsing Accuracy & User Responsibility</h4>
+      <p>Automated text extraction can miss items, misread formatting, or interpret dates differently than intended. Always verify extracted dates and times against your official syllabus and instructor announcements.</p>
+      <h4 class="font-bold text-slate-900">4. Acceptable Use & Liability</h4>
+      <p>Do not upload unlawful or infringing material or interfere with the Service. The Service is provided "as is" without liability for missed academic deadlines or service interruptions.</p>
+    `;
+
+    const PRIVACY_POLICY_HTML = `
+      <h3 class="text-base font-bold text-slate-900">Privacy Policy — SyllabAI</h3>
+      <p class="text-xs text-slate-500">Last Updated: November 22, 2026</p>
+      <p><strong>1. Information We Collect & Process:</strong> Basic Google profile details (name and email) when signing in with Google, plus course details, uploaded syllabus files/text, and extracted or manually added assignments and events.</p>
+      <p><strong>2. How Your Data Is Used:</strong> Syllabus files are scanned in your browser to extract text and detect schedule items. Items are sent to Google Calendar or exported as an <code>.ics</code> file only when you initiate that action.</p>
+      <p><strong>3. Google API Services & Limited Use:</strong> SyllabAI's use and transfer of information received from Google APIs adhere to the Google API Services User Data Policy, including Limited Use requirements. We do not sell your Google user data or use it for advertising.</p>
+      <p><strong>4. Data Storage & Your Controls:</strong> Data remains in your active browser session unless exported or pushed to Google Calendar. You can revoke SyllabAI's access anytime in your Google Account Permissions.</p>
+    `;
+
+    const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const FULL_MONTH_NAMES = [
+      'January', 'February', 'March', 'April', 'May', 'June',
+      'July', 'August', 'September', 'October', 'November', 'December',
+    ];
+    const DAY_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    const GOOGLE_CALENDAR_SCOPE =
+      'https://www.googleapis.com/auth/calendar https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile';
+
+    const appState = {
+      user: null,
+      googleAccessToken: '',
+      courseCalendarIds: {},
+      courses: [],
+      deadlines: [],
+      currentDate: new Date(2026, 7, 24),
+      calendarView: 'week',
+      pendingScan: null,
+    };
+
+    function safeOn(id, eventName, handler) {
+      const el = document.getElementById(id);
+      if (el) el.addEventListener(eventName, handler);
+      return el;
+    }
+
+    function escapeHtml(value) {
+      return String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    function showToast(message, type = 'info') {
+      const container = document.getElementById('toast-container');
+      if (!container) return;
+      const toneMap = {
+        success: 'bg-emerald-900 text-white border-emerald-700',
+        error: 'bg-rose-900 text-white border-rose-700',
+        info: 'bg-slate-900 text-white border-slate-700',
+      };
+      const toast = document.createElement('div');
+      toast.className = `rounded-xl border px-4 py-3 text-xs font-medium shadow-lg ${toneMap[type] || toneMap.info}`;
+      toast.textContent = message;
+      container.appendChild(toast);
+      setTimeout(() => {
+        toast.remove();
+      }, 3600);
+    }
+
+    function setLoadingOverlay(show, title = 'Working...', subtitle = 'Please wait a moment.') {
+      const overlay = document.getElementById('global-loading-overlay');
+      const titleEl = document.getElementById('loading-overlay-title');
+      const subEl = document.getElementById('loading-overlay-subtitle');
+      if (titleEl) titleEl.textContent = title;
+      if (subEl) subEl.textContent = subtitle;
+      if (overlay) overlay.classList.toggle('hidden', !show);
+    }
+
+    function openLegalModal(docType = 'tos') {
+      const modal = document.getElementById('legal-modal');
+      const contentEl = document.getElementById('legal-modal-content');
+      const tosTab = document.getElementById('legal-tab-tos');
+      const privacyTab = document.getElementById('legal-tab-privacy');
+      if (!modal || !contentEl) return;
+
+      const isTos = docType === 'tos';
+      contentEl.innerHTML = isTos ? TERMS_OF_SERVICE_HTML : PRIVACY_POLICY_HTML;
+
+      if (tosTab) {
+        tosTab.className = isTos
+          ? 'rounded-lg px-3 py-1.5 text-xs font-bold bg-brand-600 text-white cursor-pointer'
+          : 'rounded-lg px-3 py-1.5 text-xs font-bold bg-slate-100 text-slate-700 hover:bg-slate-200 cursor-pointer';
+      }
+      if (privacyTab) {
+        privacyTab.className = !isTos
+          ? 'rounded-lg px-3 py-1.5 text-xs font-bold bg-brand-600 text-white cursor-pointer'
+          : 'rounded-lg px-3 py-1.5 text-xs font-bold bg-slate-100 text-slate-700 hover:bg-slate-200 cursor-pointer';
+      }
+
+      modal.classList.remove('hidden');
+    }
+
+    function closeLegalModal() {
+      document.getElementById('legal-modal')?.classList.add('hidden');
+    }
+
+    function parseLocalDate(isoDateStr) {
+      const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(isoDateStr || '').trim());
+      if (!match) return new Date(2026, 7, 24);
+      return new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
+    }
+
+    function toIsoDate(dateObj) {
+      const y = dateObj.getFullYear();
+      const m = String(dateObj.getMonth() + 1).padStart(2, '0');
+      const d = String(dateObj.getDate()).padStart(2, '0');
+      return `${y}-${m}-${d}`;
+    }
+
+    function addDays(dateObj, days) {
+      const next = new Date(dateObj.getFullYear(), dateObj.getMonth(), dateObj.getDate());
+      next.setDate(next.getDate() + days);
+      return next;
+    }
+
+    function getStartOfWeek(dateObj) {
+      const day = dateObj.getDay();
+      return addDays(dateObj, -day);
+    }
+
+    function updateNoticeVisibility() {
+      const notice = document.getElementById('oauth-config-notice');
+      if (notice) {
+        notice.classList.toggle('hidden', Boolean(DEFAULT_GOOGLE_CLIENT_ID.trim()));
+      }
+    }
+
+    async function signInWithGoogle() {
+      const clientId = DEFAULT_GOOGLE_CLIENT_ID.trim();
+      if (!clientId) {
+        throw new Error('Google OAuth Client ID is not configured yet. Use Demo Account or set DEFAULT_GOOGLE_CLIENT_ID.');
+      }
+      if (!window.google?.accounts?.oauth2) {
+        throw new Error('Google Sign-In library is still loading. Please try again in a moment.');
+      }
+
+      const tokenResponse = await new Promise((resolve, reject) => {
+        const client = window.google.accounts.oauth2.initTokenClient({
+          client_id: clientId,
+          scope: GOOGLE_CALENDAR_SCOPE,
+          callback: (resp) => {
+            if (resp && resp.access_token) resolve(resp);
+            else reject(new Error(resp?.error || 'Google permission was not granted.'));
+          },
+          error_callback: (err) => {
+            reject(new Error(err?.message || 'Google sign-in popup closed or failed.'));
+          },
+        });
+        client.requestAccessToken({ prompt: '' });
+      });
+
+      appState.googleAccessToken = tokenResponse.access_token;
+
+      let profile = { name: 'Google User', email: '' };
+      try {
+        const res = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+          headers: { Authorization: `Bearer ${appState.googleAccessToken}` },
+        });
+        if (res.ok) {
+          const info = await res.json();
+          profile = {
+            name: info.name || info.email || 'Google User',
+            email: info.email || '',
+          };
+        }
+      } catch (_) {
+        // Fallback profile if userinfo is unavailable
+      }
+
+      appState.user = {
+        name: profile.name,
+        email: profile.email,
+        authProvider: 'google',
+      };
+    }
+
+    function renderWorkspace() {
+      const loginView = document.getElementById('login-view');
+      const appView = document.getElementById('app-view');
+      if (!appState.user) {
+        loginView?.classList.remove('hidden');
+        appView?.classList.add('hidden');
+        return;
+      }
+
+      loginView?.classList.add('hidden');
+      appView?.classList.remove('hidden');
+
+      const userDisplay = document.getElementById('user-display');
+      if (userDisplay) {
+        const modeLabel = appState.googleAccessToken
+          ? 'Google Calendar Connected'
+          : 'Workspace Session';
+        userDisplay.textContent = `${appState.user.name} · ${modeLabel}`;
+      }
+
+      renderCoursesList();
+      renderDeadlinesList();
+      renderCalendar();
+    }
+
+    function renderCoursesList() {
+      const container = document.getElementById('courses-list');
+      if (!container) return;
+      if (appState.courses.length === 0) {
+        container.innerHTML = '<p class="text-xs text-slate-500">No classes added yet. Click "+ Add Class" to scan a syllabus.</p>';
+        return;
+      }
+
+      container.innerHTML = appState.courses
+        .map((course) => {
+          const daysText = (course.days || []).join(', ') || 'No fixed days';
+          const calLinked = Boolean(appState.courseCalendarIds[course.code]);
+          return `
+            <div class="rounded-xl border border-slate-200 p-3 flex items-start justify-between gap-2 bg-slate-50/50">
+              <div class="flex items-start gap-2.5 min-w-0">
+                <span class="w-3 h-3 rounded-full mt-1 shrink-0" style="background:${escapeHtml(course.color || '#2563eb')}"></span>
+                <div class="min-w-0">
+                  <div class="text-xs font-bold text-slate-900 truncate">${escapeHtml(course.code)} · ${escapeHtml(course.name)}</div>
+                  <div class="text-[11px] text-slate-500">${escapeHtml(daysText)} · ${escapeHtml(course.startTime)}–${escapeHtml(course.endTime)}</div>
+                  <div class="text-[11px] font-medium ${calLinked ? 'text-emerald-700' : 'text-slate-400'} mt-0.5">
+                    ${calLinked ? `Google Calendar: ${escapeHtml(course.code)}` : 'Ready to sync to Google Calendar'}
+                  </div>
+                </div>
+              </div>
+              <button
+                type="button"
+                data-delete-course="${escapeHtml(course.id)}"
+                class="text-xs font-semibold text-slate-400 hover:text-rose-600 px-1.5 cursor-pointer"
+                title="Remove class"
+              >
+                ✕
+              </button>
+            </div>
+          `;
+        })
+        .join('');
+
+      container.querySelectorAll('[data-delete-course]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          const courseId = btn.getAttribute('data-delete-course');
+          appState.courses = appState.courses.filter((c) => c.id !== courseId);
+          appState.deadlines = appState.deadlines.filter((d) => d.courseId !== courseId);
+          renderWorkspace();
+          showToast('Class removed.', 'info');
+        });
+      });
+    }
+
+    function renderDeadlinesList() {
+      const listEl = document.getElementById('deadlines-list');
+      const countEl = document.getElementById('deadlines-count-label');
+      if (!listEl || !countEl) return;
+
+      const sorted = [...appState.deadlines].sort((a, b) =>
+        `${a.date} ${a.time || '23:59'}`.localeCompare(`${b.date} ${b.time || '23:59'}`)
+      );
+      countEl.textContent = `${sorted.length} ${sorted.length === 1 ? 'item' : 'items'}`;
+
+      if (sorted.length === 0) {
+        listEl.innerHTML = '<p class="text-xs text-slate-500">No assignments or events scheduled yet.</p>';
+        return;
+      }
+
+      listEl.innerHTML = sorted
+        .map((item) => {
+          const course = appState.courses.find((c) => c.id === item.courseId);
+          const color = course?.color || '#2563eb';
+          const dt = parseLocalDate(item.date);
+          const dateLabel = `${MONTH_NAMES[dt.getMonth()]} ${dt.getDate()}`;
+          return `
+            <button
+              type="button"
+              data-open-detail="${escapeHtml(item.id)}"
+              class="w-full text-left rounded-xl border border-slate-200 hover:border-brand-300 bg-white p-2.5 transition flex items-center justify-between gap-2 cursor-pointer"
+            >
+              <div class="min-w-0">
+                <div class="flex items-center gap-1.5">
+                  <span class="w-2 h-2 rounded-full shrink-0" style="background:${escapeHtml(color)}"></span>
+                  <span class="text-xs font-bold text-slate-900 truncate">${escapeHtml(item.title)}</span>
+                </div>
+                <div class="text-[11px] text-slate-500 mt-0.5 truncate">
+                  ${escapeHtml(course?.code || 'Class')} · ${escapeHtml(item.type || 'Assignment')}
+                </div>
+              </div>
+              <span class="text-[11px] font-semibold text-brand-700 bg-brand-50 px-2 py-0.5 rounded-md shrink-0">
+                ${escapeHtml(dateLabel)}
+              </span>
+            </button>
+          `;
+        })
+        .join('');
+
+      listEl.querySelectorAll('[data-open-detail]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          openDetailModal(btn.getAttribute('data-open-detail'));
+        });
+      });
+    }
+
+    function renderCalendar() {
+      const titleEl = document.getElementById('calendar-title');
+      const container = document.getElementById('calendar-container');
+      const weekBtn = document.getElementById('view-week-btn');
+      const monthBtn = document.getElementById('view-month-btn');
+      if (!titleEl || !container) return;
+
+      const isWeek = appState.calendarView === 'week';
+      weekBtn?.classList.toggle('bg-white', isWeek);
+      weekBtn?.classList.toggle('text-slate-900', isWeek);
+      weekBtn?.classList.toggle('shadow-2xs', isWeek);
+      weekBtn?.classList.toggle('text-slate-600', !isWeek);
+
+      monthBtn?.classList.toggle('bg-white', !isWeek);
+      monthBtn?.classList.toggle('text-slate-900', !isWeek);
+      monthBtn?.classList.toggle('shadow-2xs', !isWeek);
+      monthBtn?.classList.toggle('text-slate-600', isWeek);
+
+      if (isWeek) {
+        const startOfWeek = getStartOfWeek(appState.currentDate);
+        const endOfWeek = addDays(startOfWeek, 6);
+        titleEl.textContent = `${MONTH_NAMES[startOfWeek.getMonth()]} ${startOfWeek.getDate()} – ${MONTH_NAMES[endOfWeek.getMonth()]} ${endOfWeek.getDate()}, ${endOfWeek.getFullYear()}`;
+
+        const days = Array.from({ length: 7 }, (_, idx) => addDays(startOfWeek, idx));
+        container.innerHTML = `
+          <div class="grid grid-cols-7 gap-2 min-w-[640px]">
+            ${days
+              .map((dayObj) => {
+                const iso = toIsoDate(dayObj);
+                const dayShort = DAY_SHORT[dayObj.getDay()];
+                const dayDeadlines = appState.deadlines.filter((d) => d.date === iso);
+                const dayClasses = appState.courses.filter((c) => (c.days || []).includes(dayShort));
+                return `
+                  <div class="rounded-xl border border-slate-200 bg-slate-50/60 p-2 min-h-[260px] flex flex-col gap-1.5">
+                    <div class="text-center pb-1.5 border-b border-slate-200/70">
+                      <div class="text-[11px] font-semibold text-slate-500">${escapeHtml(dayShort)}</div>
+                      <div class="text-sm font-bold text-slate-900">${dayObj.getDate()}</div>
+                    </div>
+                    ${dayClasses
+                      .map(
+                        (c) => `
+                          <div class="rounded-lg px-2 py-1 text-[11px] font-semibold text-white truncate" style="background:${escapeHtml(c.color || '#2563eb')}">
+                            ${escapeHtml(c.code)} (${escapeHtml(c.startTime)})
+                          </div>
+                        `
+                      )
+                      .join('')}
+                    ${dayDeadlines
+                      .map((item) => {
+                        const course = appState.courses.find((c) => c.id === item.courseId);
+                        return `
+                          <button
+                            type="button"
+                            data-open-detail="${escapeHtml(item.id)}"
+                            class="w-full text-left rounded-lg border border-slate-200 bg-white hover:border-brand-400 px-2 py-1.5 text-[11px] font-semibold text-slate-800 shadow-2xs truncate cursor-pointer"
+                            style="border-left: 3px solid ${escapeHtml(course?.color || '#2563eb')}"
+                          >
+                            ${escapeHtml(item.title)}
+                          </button>
+                        `;
+                      })
+                      .join('')}
+                  </div>
+                `;
+              })
+              .join('')}
+          </div>
+        `;
+      } else {
+        const year = appState.currentDate.getFullYear();
+        const month = appState.currentDate.getMonth();
+        titleEl.textContent = `${FULL_MONTH_NAMES[month]} ${year}`;
+
+        const firstDay = new Date(year, month, 1);
+        const startGrid = getStartOfWeek(firstDay);
+        const cells = Array.from({ length: 42 }, (_, i) => addDays(startGrid, i));
+
+        container.innerHTML = `
+          <div class="grid grid-cols-7 gap-1.5 min-w-[640px]">
+            ${DAY_SHORT.map((d) => `<div class="text-center text-[11px] font-bold text-slate-500 py-1">${d}</div>`).join('')}
+            ${cells
+              .map((cellDate) => {
+                const iso = toIsoDate(cellDate);
+                const inMonth = cellDate.getMonth() === month;
+                const items = appState.deadlines.filter((d) => d.date === iso);
+                return `
+                  <div class="rounded-lg border ${inMonth ? 'border-slate-200 bg-white' : 'border-slate-100 bg-slate-50/50 text-slate-400'} p-1.5 min-h-[92px] flex flex-col gap-1">
+                    <div class="text-[11px] font-bold ${inMonth ? 'text-slate-700' : 'text-slate-400'}">${cellDate.getDate()}</div>
+                    ${items
+                      .slice(0, 3)
+                      .map((item) => {
+                        const course = appState.courses.find((c) => c.id === item.courseId);
+                        return `
+                          <button
+                            type="button"
+                            data-open-detail="${escapeHtml(item.id)}"
+                            class="w-full text-left rounded px-1.5 py-0.5 text-[10px] font-semibold text-white truncate cursor-pointer"
+                            style="background:${escapeHtml(course?.color || '#2563eb')}"
+                          >
+                            ${escapeHtml(item.title)}
+                          </button>
+                        `;
+                      })
+                      .join('')}
+                    ${items.length > 3 ? `<div class="text-[10px] font-semibold text-slate-500">+${items.length - 3} more</div>` : ''}
+                  </div>
+                `;
+              })
+              .join('')}
+          </div>
+        `;
+      }
+
+      container.querySelectorAll('[data-open-detail]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          openDetailModal(btn.getAttribute('data-open-detail'));
+        });
+      });
+    }
+
+    function extractPlainTextFromContent(rawText, fileName = '') {
+      const lower = String(fileName || '').toLowerCase();
+      let cleaned = String(rawText || '');
+      if (lower.endsWith('.html') || lower.endsWith('.htm')) {
+        const doc = new DOMParser().parseFromString(cleaned, 'text/html');
+        cleaned = doc.body ? doc.body.innerText || doc.body.textContent || '' : cleaned;
+      }
+      return cleaned
+        .replace(/\r\n/g, '\n')
+        .replace(/[ \t]+/g, ' ')
+        .split('\n')
+        .map((line) => line.trim())
+        .filter(Boolean)
+        .join('\n');
+    }
+
+    async function extractTextFromPdfFile(file) {
+      const pdfjsLib = window['pdfjs-dist/build/pdf'] || window.pdfjsLib;
+      if (!pdfjsLib || typeof pdfjsLib.getDocument !== 'function') {
+        throw new Error('PDF reader library is not available in this browser session.');
+      }
+
+      if (pdfjsLib.GlobalWorkerOptions) {
+        pdfjsLib.GlobalWorkerOptions.workerSrc =
+          'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+      }
+
+      const arrayBuffer = await file.arrayBuffer();
+      const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer });
+      const pdfDoc = await loadingTask.promise;
+      const pageTexts = [];
+
+      for (let pageNum = 1; pageNum <= pdfDoc.numPages; pageNum++) {
+        const page = await pdfDoc.getPage(pageNum);
+        const textContent = await page.getTextContent();
+        const items = Array.isArray(textContent.items) ? textContent.items : [];
+
+        // Group text items by vertical baseline (y) so table columns and rows stay aligned.
+        const rowMap = new Map();
+        for (const item of items) {
+          if (!item || typeof item.str !== 'string') continue;
+          const str = item.str.trim();
+          if (!str) continue;
+          const x = Array.isArray(item.transform) ? item.transform[4] : 0;
+          const yRaw = Array.isArray(item.transform) ? item.transform[5] : 0;
+          const yKey = Math.round(yRaw / 4) * 4;
+          if (!rowMap.has(yKey)) rowMap.set(yKey, []);
+          rowMap.get(yKey).push({ x, str });
+        }
+
+        const sortedRows = Array.from(rowMap.entries())
+          .sort((a, b) => b[0] - a[0])
+          .map(([, cells]) =>
+            cells
+              .sort((a, b) => a.x - b.x)
+              .map((c) => c.str)
+              .join(' ')
+          );
+
+        pageTexts.push(`[Page ${pageNum}]\n${sortedRows.join('\n')}`);
+      }
+
+      return extractPlainTextFromContent(pageTexts.join('\n'), file.name);
+    }
+
+    async function extractSyllabusPlainText(file) {
+      const fileName = String(file?.name || '').toLowerCase();
+      const isPdf = fileName.endsWith('.pdf') || file?.type === 'application/pdf';
+      if (isPdf) {
+        return extractTextFromPdfFile(file);
+      }
+      const rawText = await file.text();
+      return extractPlainTextFromContent(rawText, file.name);
+    }
+
+    function parseMonthDayFromLine(line, defaultYear = 2026) {
+      const monthIndexMap = {
+        jan: 0, january: 0,
+        feb: 1, february: 1,
+        mar: 2, march: 2,
+        apr: 3, april: 3,
+        may: 4,
+        jun: 5, june: 5,
+        jul: 6, july: 6,
+        aug: 7, august: 7,
+        sep: 8, sept: 8, september: 8,
+        oct: 9, october: 9,
+        nov: 10, november: 10,
+        dec: 11, december: 11,
+      };
+
+      const monthRegex = /\b(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t|tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\.?\s+(\d{1,2})\b/gi;
+      let match;
+      let chosenIso = null;
+      while ((match = monthRegex.exec(line)) !== null) {
+        const key = match[1].toLowerCase();
+        const mIdx = monthIndexMap[key];
+        const dayNum = Number(match[2]);
+        if (mIdx !== undefined && dayNum >= 1 && dayNum <= 31) {
+          const candidateIso = `${defaultYear}-${String(mIdx + 1).padStart(2, '0')}-${String(dayNum).padStart(2, '0')}`;
+          const beforeText = line.slice(0, match.index).toLowerCase();
+          if (/\bdue\b/.test(beforeText)) {
+            return candidateIso;
+          }
+          if (!chosenIso) chosenIso = candidateIso;
+        }
+      }
+      return chosenIso;
+    }
+
+    function parseWeekDate(line, semesterStartIso) {
+      const wkMatch = /\b(?:week|wk)\s*(\d{1,2})\b/i.exec(line);
+      if (!wkMatch) return null;
+      const weekNum = Math.max(1, Number(wkMatch[1]));
+      const base = parseLocalDate(semesterStartIso || '2026-08-24');
+      return toIsoDate(addDays(base, (weekNum - 1) * 7 + 4));
+    }
+
+    function isOpenOnlyWithoutDue(line) {
+      const lower = line.toLowerCase();
+      const hasOpenWord = /\b(opens?|starts?|available|released|posted)\b/.test(lower);
+      const hasDueWord = /\bdue\b/.test(lower);
+      return hasOpenWord && !hasDueWord;
+    }
+
+    function isNegatedItem(line) {
+      return /\b(no|none|canceled|cancelled|skip|skipped|optional)\s+(week\s+\d+\s+)?(homework|quiz|exam|test|lab|project|assignment)\b/i.test(line);
+    }
+
+    function condenseAssignmentTitle(rawSegment) {
+      let cleaned = String(rawSegment || '')
+        .replace(/\|/g, ' ')
+        .replace(/\b(mon|tue|wed|thu|fri|sat|sun)\b/gi, ' ')
+        .replace(/\b(jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)[a-z]*\.?\s*\d{1,2}\b/gi, ' ')
+        .replace(/\b(due|opens?|starts?|available|released|posted)\b.*$/i, ' ')
+        .replace(/\s*:\s*.*$/, '')
+        .replace(/\s+/g, ' ')
+        .trim();
+
+      const patterns = [
+        /\b((?:week|wk)\s*\d+\s+(?:homework|quiz|lab|assignment|project))\b/i,
+        /\b((?:exam|test|quiz|midterm|lab|project|homework|assignment)\s*\d*)\b/i,
+        /\b(final\s+exam)\b/i,
+        /\b(basic\s+skills)\b/i,
+        /\b(learning\s+strategies\s+survey)\b/i,
+        /\b((?:week\s*\d+\s+)?climate\s+science\s+discussion)\b/i,
+        /\b(comprehensive\s+(?:practice\s+)?quizzes?)\b/i,
+      ];
+
+      for (const pat of patterns) {
+        const m = pat.exec(cleaned);
+        if (m && m[1]) {
+          return m[1]
+            .replace(/\s+/g, ' ')
+            .replace(/\b\w/g, (ch) => ch.toUpperCase())
+            .trim();
+        }
+      }
+
+      return cleaned.slice(0, 48).trim();
+    }
+
+    function detectCategory(title) {
+      const lower = String(title || '').toLowerCase();
+      if (/\b(exam|midterm|final)\b/.test(lower)) return 'Exam';
+      if (/\btest\b/.test(lower)) return 'Test';
+      if (/\bquiz\b/.test(lower)) return 'Quiz';
+      if (/\blab\b/.test(lower)) return 'Lab';
+      if (/\bproject\b/.test(lower)) return 'Project';
+      if (/\b(homework|assignment)\b/.test(lower)) return 'Assignment';
+      return 'Other';
+    }
+
+    function extractAssignmentsFromPlainText(plainText, semesterStartIso = '2026-08-24') {
+      const lines = String(plainText || '').split('\n');
+      const candidates = [];
+      let activeDate = null;
+
+      const keywordRegex =
+        /\b(homework|quiz|exam|midterm|final|test|lab|project|assignment|basic\s+skills|learning\s+strategies\s+survey|climate\s+science\s+discussion|comprehensive\s+(?:practice\s+)?quizzes?)\b/i;
+
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i].trim();
+        if (!line || /^\|?\s*date\s*\|/i.test(line) || /^[-|:\s]+$/.test(line)) continue;
+
+        const lineDate = parseMonthDayFromLine(line, 2026);
+        if (lineDate) {
+          activeDate = lineDate;
+        }
+
+        if (isNegatedItem(line) || isOpenOnlyWithoutDue(line)) continue;
+
+        const parts = line.includes('|') ? line.split('|').map((p) => p.trim()).filter(Boolean) : [line];
+        for (const part of parts) {
+          if (!keywordRegex.test(part)) continue;
+          if (/^lecture\s+\d+/i.test(part) || /^review\s+for\s+exam/i.test(part) || /recitation/i.test(part)) continue;
+          if (isNegatedItem(part) || isOpenOnlyWithoutDue(part)) continue;
+
+          const title = condenseAssignmentTitle(part);
+          if (!title) continue;
+
+          const dueDate =
+            parseMonthDayFromLine(part, 2026) ||
+            lineDate ||
+            parseWeekDate(part, semesterStartIso) ||
+            activeDate;
+
+          if (!dueDate) continue;
+
+          candidates.push({
+            title,
+            type: detectCategory(title),
+            date: dueDate,
+            time: '23:59',
+            sourceProof: line,
+            confidence: 'High',
+          });
+        }
+      }
+
+      const deduped = [];
+      const seenByTitle = new Map();
+
+      for (const item of candidates) {
+        const titleKey = item.title.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+        const exactKey = `${titleKey}::${item.date}`;
+        if (deduped.some((existing) => `${existing.title.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim()}::${existing.date}` === exactKey)) {
+          continue;
+        }
+
+        const existingIndex = seenByTitle.get(titleKey);
+        if (existingIndex !== undefined) {
+          const existing = deduped[existingIndex];
+          const existingHasDue = /\bdue\b/i.test(existing.sourceProof);
+          const candidateHasDue = /\bdue\b/i.test(item.sourceProof);
+          if (!existingHasDue && candidateHasDue) {
+            deduped[existingIndex] = item;
+          }
+          continue;
+        }
+
+        seenByTitle.set(titleKey, deduped.length);
+        deduped.push(item);
+      }
+
+      return deduped;
+    }
+
+    function updateScanBadgeAndButton() {
+      const badge = document.getElementById('syllabus-scan-badge');
+      const saveBtn = document.getElementById('save-course-btn');
+      const previewBox = document.getElementById('scanned-preview-box');
+      const previewPre = document.getElementById('scanned-plain-text');
+      const summaryLabel = document.getElementById('scanned-summary-label');
+
+      const scanned = Boolean(appState.pendingScan && appState.pendingScan.plainText);
+      if (badge) {
+        badge.textContent = scanned ? 'Syllabus Scanned' : 'Syllabus Not Scanned Yet';
+        badge.className = scanned
+          ? 'text-[11px] font-semibold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800'
+          : 'text-[11px] font-semibold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800';
+      }
+      if (saveBtn) {
+        saveBtn.disabled = !scanned;
+      }
+      if (previewBox && previewPre && summaryLabel) {
+        if (scanned) {
+          previewBox.classList.remove('hidden');
+          previewPre.textContent = appState.pendingScan.plainText;
+          summaryLabel.textContent = `${appState.pendingScan.items.length} items detected`;
+        } else {
+          previewBox.classList.add('hidden');
+          previewPre.textContent = '';
+          summaryLabel.textContent = '';
+        }
+      }
+    }
+
+    async function handleSyllabusFile(file) {
+      if (!file) return;
+      setLoadingOverlay(true, 'Scanning syllabus...', `Extracting text from ${file.name}.`);
+      try {
+        const plainText = await extractSyllabusPlainText(file);
+        if (!plainText) {
+          throw new Error('Could not extract readable text from the selected syllabus file.');
+        }
+        const semesterStart = document.getElementById('semester-start-input')?.value || '2026-08-24';
+        const items = extractAssignmentsFromPlainText(plainText, semesterStart);
+        appState.pendingScan = {
+          fileName: file.name,
+          plainText,
+          items,
+          semesterStart,
+        };
+        updateScanBadgeAndButton();
+        showToast(`Scanned ${file.name} (${items.length} items found).`, 'success');
+      } catch (err) {
+        appState.pendingScan = null;
+        updateScanBadgeAndButton();
+        showToast(err?.message || 'Failed to scan syllabus file.', 'error');
+      } finally {
+        setLoadingOverlay(false);
+      }
+    }
+
+    function openCourseModal() {
+      appState.pendingScan = null;
+      document.getElementById('course-form')?.reset();
+      updateScanBadgeAndButton();
+      document.getElementById('course-modal')?.classList.remove('hidden');
+    }
+
+    function closeCourseModal() {
+      document.getElementById('course-modal')?.classList.add('hidden');
+    }
+
+    function openDeadlineModal() {
+      const select = document.getElementById('deadline-course-select');
+      if (select) {
+        select.innerHTML = appState.courses.length
+          ? appState.courses.map((c) => `<option value="${escapeHtml(c.id)}">${escapeHtml(c.code)} · ${escapeHtml(c.name)}</option>`).join('')
+          : '<option value="general">General</option>';
+      }
+      document.getElementById('deadline-form')?.reset();
+      document.getElementById('deadline-date').value = toIsoDate(appState.currentDate);
+      document.getElementById('deadline-modal')?.classList.remove('hidden');
+    }
+
+    function closeDeadlineModal() {
+      document.getElementById('deadline-modal')?.classList.add('hidden');
+    }
+
+    function openDetailModal(itemId) {
+      const item = appState.deadlines.find((d) => d.id === itemId);
+      if (!item) return;
+
+      document.getElementById('detail-item-id').value = item.id;
+      document.getElementById('detail-title-input').value = item.title || '';
+      document.getElementById('detail-type-select').value = item.type || 'Assignment';
+      document.getElementById('detail-date-input').value = item.date || '';
+      document.getElementById('detail-time-input').value = item.time || '23:59';
+      document.getElementById('detail-source-proof').textContent = item.sourceProof || 'Manual entry';
+
+      const badge = document.getElementById('detail-confidence-badge');
+      if (badge) {
+        badge.textContent = `${item.confidence || 'High'} Confidence`;
+      }
+
+      document.getElementById('detail-modal')?.classList.remove('hidden');
+    }
+
+    function closeDetailModal() {
+      document.getElementById('detail-modal')?.classList.add('hidden');
+    }
+
+    async function ensureCourseGoogleCalendar(courseCode) {
+      const code = String(courseCode || 'SyllabAI').trim().toUpperCase();
+      if (appState.courseCalendarIds[code]) {
+        return appState.courseCalendarIds[code];
+      }
+      if (!appState.googleAccessToken) {
+        return 'primary';
+      }
+
+      const listRes = await fetch('https://www.googleapis.com/calendar/v3/users/me/calendarList', {
+        headers: { Authorization: `Bearer ${appState.googleAccessToken}` },
+      });
+      if (listRes.ok) {
+        const listData = await listRes.json();
+        const existing = (listData.items || []).find(
+          (cal) => String(cal.summary || '').trim().toUpperCase() === code
+        );
+        if (existing?.id) {
+          appState.courseCalendarIds[code] = existing.id;
+          return existing.id;
+        }
+      }
+
+      const createRes = await fetch('https://www.googleapis.com/calendar/v3/calendars', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${appState.googleAccessToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          summary: code,
+          timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'America/New_York',
+        }),
+      });
+      if (!createRes.ok) {
+        throw new Error(`Could not create Google Calendar named "${code}".`);
+      }
+      const created = await createRes.json();
+      appState.courseCalendarIds[code] = created.id;
+      return created.id;
+    }
+
+    async function pushDeadlinesToGoogleCalendar(itemsToPush) {
+      if (!appState.googleAccessToken) {
+        throw new Error('Sign in with Google first to push directly to Google Calendar, or use "Export .ICS".');
+      }
+
+      const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || 'America/New_York';
+      let pushedCount = 0;
+
+      for (const item of itemsToPush) {
+        const course = appState.courses.find((c) => c.id === item.courseId);
+        const calId = await ensureCourseGoogleCalendar(course?.code || 'SyllabAI');
+        const startIso = `${item.date}T${item.time || '23:59'}:00`;
+        const endDateObj = new Date(`${item.date}T${item.time || '23:59'}:00`);
+        endDateObj.setMinutes(endDateObj.getMinutes() + 30);
+        const pad = (n) => String(n).padStart(2, '0');
+        const endIso = `${endDateObj.getFullYear()}-${pad(endDateObj.getMonth() + 1)}-${pad(endDateObj.getDate())}T${pad(endDateObj.getHours())}:${pad(endDateObj.getMinutes())}:00`;
+
+        const res = await fetch(`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calId)}/events`, {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${appState.googleAccessToken}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            summary: item.title,
+            description: `${course?.code || ''} · ${item.type || 'Assignment'}\nSource: ${item.sourceProof || ''}`.trim(),
+            start: { dateTime: startIso, timeZone: tz },
+            end: { dateTime: endIso, timeZone: tz },
+          }),
+        });
+        if (!res.ok) {
+          throw new Error(`Failed to create calendar event for "${item.title}".`);
+        }
+        pushedCount += 1;
+      }
+
+      renderCoursesList();
+      return pushedCount;
+    }
+
+    function exportIcsCalendar() {
+      const lines = [
+        'BEGIN:VCALENDAR',
+        'VERSION:2.0',
+        'PRODID:-//SyllabAI//Syllabus Calendar//EN',
+      ];
+
+      for (const item of appState.deadlines) {
+        const course = appState.courses.find((c) => c.id === item.courseId);
+        const compactDate = String(item.date || '20260824').replace(/-/g, '');
+        const compactTime = `${String(item.time || '23:59').replace(/:/g, '')}00`;
+        lines.push('BEGIN:VEVENT');
+        lines.push(`UID:${item.id}@syllabai.local`);
+        lines.push(`DTSTART:${compactDate}T${compactTime}`);
+        lines.push(`DTEND:${compactDate}T${compactTime}`);
+        lines.push(`SUMMARY:${(course?.code ? `[${course.code}] ` : '') + item.title}`);
+        lines.push(`DESCRIPTION:${String(item.sourceProof || '').replace(/\n/g, ' ')}`);
+        lines.push('END:VEVENT');
+      }
+
+      lines.push('END:VCALENDAR');
+      const blob = new Blob([lines.join('\r\n')], { type: 'text/calendar;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'syllabai-schedule.ics';
+      a.click();
+      URL.revokeObjectURL(url);
+      showToast('Downloaded syllabai-schedule.ics.', 'success');
+    }
+
+    // Event Wiring
+    safeOn('open-tos-btn', 'click', () => openLegalModal('tos'));
+    safeOn('open-privacy-btn', 'click', () => openLegalModal('privacy'));
+    safeOn('legal-tab-tos', 'click', () => openLegalModal('tos'));
+    safeOn('legal-tab-privacy', 'click', () => openLegalModal('privacy'));
+    safeOn('close-legal-modal-btn', 'click', closeLegalModal);
+    safeOn('done-legal-modal-btn', 'click', closeLegalModal);
+
+    safeOn('google-signin-btn', 'click', async () => {
+      setLoadingOverlay(true, 'Signing in with Google...', 'Requesting Google account and Calendar access.');
+      try {
+        await signInWithGoogle();
+        renderWorkspace();
+        showToast(`Signed in as ${appState.user.name}.`, 'success');
+      } catch (err) {
+        showToast(err?.message || 'Google sign-in failed.', 'error');
+      } finally {
+        setLoadingOverlay(false);
+      }
+    });
+
+    safeOn('demo-signin-btn', 'click', () => {
+      appState.googleAccessToken = '';
+      appState.user = {
+        name: 'Jordan Taylor',
+        email: 'jordan@university.edu',
+        authProvider: 'demo',
+      };
+      renderWorkspace();
+      showToast('Signed in to demo workspace.', 'info');
+    });
+
+    safeOn('sign-out-btn', 'click', () => {
+      appState.user = null;
+      appState.googleAccessToken = '';
+      renderWorkspace();
+      showToast('Signed out.', 'info');
+    });
+
+    safeOn('open-course-modal-btn', 'click', openCourseModal);
+    safeOn('close-course-modal-btn', 'click', closeCourseModal);
+    safeOn('cancel-course-btn', 'click', closeCourseModal);
+
+    safeOn('syllabus-file-input', 'change', async (e) => {
+      const file = e.target.files?.[0];
+      if (file) await handleSyllabusFile(file);
+    });
+
+    const dropzone = document.getElementById('syllabus-dropzone');
+    if (dropzone) {
+      dropzone.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        dropzone.classList.add('border-brand-500', 'bg-brand-50/40');
+      });
+      dropzone.addEventListener('dragleave', () => {
+        dropzone.classList.remove('border-brand-500', 'bg-brand-50/40');
+      });
+      dropzone.addEventListener('drop', async (e) => {
+        e.preventDefault();
+        dropzone.classList.remove('border-brand-500', 'bg-brand-50/40');
+        const file = e.dataTransfer?.files?.[0];
+        if (file) await handleSyllabusFile(file);
+      });
+    }
+
+    safeOn('course-form', 'submit', async (e) => {
+      e.preventDefault();
+      if (!appState.pendingScan || !appState.pendingScan.plainText) {
+        showToast('Please scan a syllabus file before saving the class.', 'error');
+        return;
+      }
+
+      const saveBtn = document.getElementById('save-course-btn');
+      if (saveBtn) saveBtn.disabled = true;
+      setLoadingOverlay(true, 'Creating class & assignments...', 'Adding course schedule and syllabus items.');
+
+      try {
+        const code = (document.getElementById('course-code')?.value || '').trim().toUpperCase();
+        const name = (document.getElementById('course-name')?.value || '').trim();
+        const startTime = document.getElementById('course-start-time')?.value || '10:00';
+        const endTime = document.getElementById('course-end-time')?.value || '10:50';
+        const color = document.getElementById('course-color')?.value || '#2563eb';
+        const days = Array.from(document.querySelectorAll('input[name="meeting-day"]:checked')).map((cb) => cb.value);
+
+        const courseId = `course-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+        appState.courses.push({
+          id: courseId,
+          code,
+          name,
+          days,
+          startTime,
+          endTime,
+          color,
+        });
+
+        const addedItems = appState.pendingScan.items.map((item, idx) => ({
+          id: `item-${Date.now()}-${idx}-${Math.random().toString(36).slice(2, 6)}`,
+          courseId,
+          title: item.title,
+          type: item.type,
+          date: item.date,
+          time: item.time || '23:59',
+          sourceProof: item.sourceProof,
+          confidence: item.confidence || 'High',
+        }));
+
+        appState.deadlines.push(...addedItems);
+        if (addedItems[0]?.date) {
+          appState.currentDate = parseLocalDate(addedItems[0].date);
+        }
+
+        appState.pendingScan = null;
+        closeCourseModal();
+        renderWorkspace();
+        showToast(`Added ${code} with ${addedItems.length} syllabus items.`, 'success');
+      } finally {
+        setLoadingOverlay(false);
+        updateScanBadgeAndButton();
+      }
+    });
+
+    safeOn('open-deadline-modal-btn', 'click', openDeadlineModal);
+    safeOn('close-deadline-modal-btn', 'click', closeDeadlineModal);
+    safeOn('cancel-deadline-btn', 'click', closeDeadlineModal);
+
+    safeOn('deadline-form', 'submit', (e) => {
+      e.preventDefault();
+      const courseId = document.getElementById('deadline-course-select')?.value || '';
+      const title = (document.getElementById('deadline-title')?.value || '').trim();
+      const type = document.getElementById('deadline-type')?.value || 'Assignment';
+      const date = document.getElementById('deadline-date')?.value || '';
+      const time = document.getElementById('deadline-time')?.value || '23:59';
+
+      if (!title || !date) return;
+
+      appState.deadlines.push({
+        id: `item-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+        courseId,
+        title,
+        type,
+        date,
+        time,
+        sourceProof: 'Added manually',
+        confidence: 'High',
+      });
+
+      closeDeadlineModal();
+      renderWorkspace();
+      showToast('Saved item.', 'success');
+    });
+
+    safeOn('close-detail-modal-btn', 'click', closeDetailModal);
+
+    safeOn('detail-edit-form', 'submit', (e) => {
+      e.preventDefault();
+      const itemId = document.getElementById('detail-item-id')?.value;
+      const idx = appState.deadlines.findIndex((d) => d.id === itemId);
+      if (idx === -1) return;
+
+      appState.deadlines[idx] = {
+        ...appState.deadlines[idx],
+        title: (document.getElementById('detail-title-input')?.value || '').trim(),
+        type: document.getElementById('detail-type-select')?.value || 'Assignment',
+        date: document.getElementById('detail-date-input')?.value || appState.deadlines[idx].date,
+        time: document.getElementById('detail-time-input')?.value || '23:59',
+      };
+
+      closeDetailModal();
+      renderWorkspace();
+      showToast('Updated item.', 'success');
+    });
+
+    safeOn('delete-detail-btn', 'click', () => {
+      const itemId = document.getElementById('detail-item-id')?.value;
+      appState.deadlines = appState.deadlines.filter((d) => d.id !== itemId);
+      closeDetailModal();
+      renderWorkspace();
+      showToast('Deleted item.', 'info');
+    });
+
+    safeOn('push-single-gcal-btn', 'click', async () => {
+      const itemId = document.getElementById('detail-item-id')?.value;
+      const item = appState.deadlines.find((d) => d.id === itemId);
+      if (!item) return;
+
+      setLoadingOverlay(true, 'Pushing to Google Calendar...', `Syncing "${item.title}" to your course calendar.`);
+      try {
+        await pushDeadlinesToGoogleCalendar([item]);
+        showToast(`Pushed "${item.title}" to Google Calendar.`, 'success');
+      } catch (err) {
+        showToast(err?.message || 'Could not push to Google Calendar.', 'error');
+      } finally {
+        setLoadingOverlay(false);
+      }
+    });
+
+    safeOn('push-all-gcal-btn', 'click', async () => {
+      if (appState.deadlines.length === 0) {
+        showToast('There are no items to push yet.', 'info');
+        return;
+      }
+
+      setLoadingOverlay(true, 'Pushing to Google Calendar...', `Syncing ${appState.deadlines.length} items into course calendars.`);
+      try {
+        const count = await pushDeadlinesToGoogleCalendar(appState.deadlines);
+        showToast(`Pushed ${count} items to Google Calendar.`, 'success');
+      } catch (err) {
+        showToast(err?.message || 'Could not push items to Google Calendar.', 'error');
+      } finally {
+        setLoadingOverlay(false);
+      }
+    });
+
+    safeOn('export-ics-btn', 'click', exportIcsCalendar);
+
+    safeOn('view-week-btn', 'click', () => {
+      appState.calendarView = 'week';
+      renderCalendar();
+    });
+
+    safeOn('view-month-btn', 'click', () => {
+      appState.calendarView = 'month';
+      renderCalendar();
+    });
+
+    safeOn('prev-period-btn', 'click', () => {
+      appState.currentDate = addDays(appState.currentDate, appState.calendarView === 'week' ? -7 : -30);
+      renderCalendar();
+    });
+
+    safeOn('next-period-btn', 'click', () => {
+      appState.currentDate = addDays(appState.currentDate, appState.calendarView === 'week' ? 7 : 30);
+      renderCalendar();
+    });
+
+    safeOn('today-btn', 'click', () => {
+      appState.currentDate = new Date();
+      renderCalendar();
+    });
+
+    updateNoticeVisibility();
+    renderWorkspace();
+  </script>
+</body>
+</html>
