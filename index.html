@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -71,21 +72,19 @@
 
       <div class="text-center text-xs text-slate-500">
         Before signing in, view our
-        <button
-          id="open-tos-btn"
-          type="button"
-          class="font-semibold text-brand-600 hover:text-brand-700 underline cursor-pointer"
+        <a
+          href="/terms.html"
+          class="font-semibold text-brand-600 hover:text-brand-700 underline"
         >
           Terms of Service
-        </button>
+        </a>
         and
-        <button
-          id="open-privacy-btn"
-          type="button"
-          class="font-semibold text-brand-600 hover:text-brand-700 underline cursor-pointer"
+        <a
+          href="/privacy.html"
+          class="font-semibold text-brand-600 hover:text-brand-700 underline"
         >
           Privacy Policy
-        </button>.
+        </a>.
       </div>
 
       <div id="oauth-config-notice" class="hidden rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">
@@ -1421,7 +1420,7 @@
         const compactDate = String(item.date || '20260824').replace(/-/g, '');
         const compactTime = `${String(item.time || '23:59').replace(/:/g, '')}00`;
         lines.push('BEGIN:VEVENT');
-        lines.push(`UID:${item.id}@syllabai.local`);
+        lines.push(`UID:${item.id}@syllabai.tech`);
         lines.push(`DTSTART:${compactDate}T${compactTime}`);
         lines.push(`DTEND:${compactDate}T${compactTime}`);
         lines.push(`SUMMARY:${(course?.code ? `[${course.code}] ` : '') + item.title}`);
